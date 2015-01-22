@@ -36,8 +36,9 @@ class DB
     {
         if( !$this->connected )
         {
-            $this->handle = mysql_connect($this->hostname, $this->username, $this->password, TRUE);
-            $this->SelectDB($this->database);
+            #$this->handle = mysql_connect($this->hostname, $this->username, $this->password, TRUE);
+            #$this->SelectDB($this->database);
+            $this->handle = mysqli_connect($this->hostname, $this->username, $this->password, $this->database);
             $this->connected = TRUE;
         }
     }
@@ -51,7 +52,7 @@ class DB
     {
         if( $this->connected )
         {
-            mysql_close($this->handle);
+            mysqli_close($this->handle);
             $this->handle    = 0;
             $this->connected = FALSE;
         }
@@ -69,16 +70,16 @@ class DB
 
     function Row($query, $binds = array())
     {
-        $result = mysql_query($this->Prepare($query, $binds), $this->handle);
+        $result = mysqli_query($this->handle,$this->Prepare($query, $binds));
 
         if( !$result )
         {
-            trigger_error(mysql_error($this->handle) . "<br />$query", E_USER_ERROR);
+            trigger_error(mysqli_error($this->handle) . "<br />$query", E_USER_ERROR);
         }
 
-        $row = mysql_fetch_assoc($result);
+        $row = mysqli_fetch_assoc($result);
 
-        mysql_free_result($result);
+        mysqli_free_result($result);
 
         return $row;
     }
@@ -86,16 +87,16 @@ class DB
     function Count($query, $binds = array())
     {
         $query = $this->Prepare($query, $binds);
-        $result = mysql_query($query, $this->handle);
+        $result = mysqli_query($this->handle,$query);
 
         if( !$result )
         {
-            trigger_error(mysql_error($this->handle) . "<br />$query", E_USER_ERROR);
+            trigger_error(mysqli_error($this->handle) . "<br />$query", E_USER_ERROR);
         }
 
-        $row = mysql_fetch_row($result);
+        $row = mysqli_fetch_row($result);
 
-        mysql_free_result($result);
+        mysqli_free_result($result);
 
         return $row[0];
     }
@@ -103,11 +104,11 @@ class DB
     function Query($query, $binds = array())
     {
         $query = $this->Prepare($query, $binds);
-        $result = mysql_query($query, $this->handle);
+        $result = mysqli_query($this->handle,$query);
 
         if( !$result )
         {
-            trigger_error(mysql_error($this->handle) . "<br />$query", E_USER_ERROR);
+            trigger_error(mysqli_error($this->handle) . "<br />$query", E_USER_ERROR);
         }
 
         return $result;
@@ -156,14 +157,14 @@ class DB
     {
         $all = array();
         $query = $this->Prepare($query, $binds);
-        $result = mysql_query($query, $this->handle);
+        $result = mysqli_query($this->handle,$query);
 
         if( !$result )
         {
-            trigger_error(mysql_error($this->handle) . "<br />$query", E_USER_ERROR);
+            trigger_error(mysqli_error($this->handle) . "<br />$query", E_USER_ERROR);
         }
 
-        while( $row = mysql_fetch_assoc($result) )
+        while( $row = mysqli_fetch_assoc($result) )
         {
             if( $key )
             {
@@ -181,44 +182,44 @@ class DB
     function Update($query, $binds = array())
     {
         $query = $this->Prepare($query, $binds);
-        $result = mysql_query($query, $this->handle);
+        $result = mysqli_query($this->handle,$query);
 
         if( !$result )
         {
-            trigger_error(mysql_error($this->handle) . "<br />$query", E_USER_ERROR);
+            trigger_error(mysqli_error($this->handle) . "<br />$query", E_USER_ERROR);
         }
 
-        return mysql_affected_rows($this->handle);
+        return mysqli_affected_rows($this->handle);
     }
 
     function NextRow($result)
     {
-        return mysql_fetch_assoc($result);
+        return mysqli_fetch_assoc($result);
     }
 
     function Free($result)
     {
-        mysql_free_result($result);
+        mysqli_free_result($result);
     }
 
     function InsertID()
     {
-        return mysql_insert_id($this->handle);
+        return mysqli_insert_id($this->handle);
     }
 
     function NumRows($result)
     {
-        return mysql_num_rows($result);
+        return mysqli_num_rows($result);
     }
 
     function FetchArray($result)
     {
-        return mysql_fetch_array($result);
+        return mysqli_fetch_array($result);
     }
 
     function Seek($result, $where)
     {
-        mysql_data_seek($result, $where);
+        mysqli_data_seek($result, $where);
     }
 
     function BindList($count)
@@ -248,7 +249,7 @@ class DB
                 else if( is_numeric($binds[$index]) )
                     $query_result .= $binds[$index];
                 else
-                    $query_result .= "'" . mysql_real_escape_string($binds[$index], $this->handle) . "'";
+                    $query_result .= "'" . mysqli_real_escape_string($this->handle,$binds[$index]) . "'";
 
                 $index++;
             }
@@ -267,11 +268,20 @@ class DB
         return $query_result;
     }
 
+// gibbet nur in den mysql_-Funktionen, daher hier als interne nachgebaut und der Tradition halben mysqli_ genannt
+function mysqli_field_name($result){
+     $retval = array();
+     while ($tmp=mysqli_fetch_assoc($query)) {
+         $retval[]=$tmp;
+     }
+     return $retval;
+}
+
     function GetTables()
     {
         $tables = array();
         $result = $this->Query('SHOW TABLES');
-        $field = mysql_field_name($result, 0);
+        $field = $this->mysqli_field_name($result);
 
         while( $row = $this->NextRow($result) )
         {
@@ -287,7 +297,7 @@ class DB
     {
         $columns = array();
         $result = $this->Query('DESCRIBE #', array($table));
-        $field = mysql_field_name($result, 0);
+        $field = $this->mysqli_field_name($result);
 
         while( $column = $this->NextRow($result) )
         {

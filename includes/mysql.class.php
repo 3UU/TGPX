@@ -271,7 +271,7 @@ class DB
 // gibbet nur in den mysql_-Funktionen, daher hier als interne nachgebaut und der Tradition halben mysqli_ genannt
 function mysqli_field_name($result){
      $retval = array();
-     while ($tmp=mysqli_fetch_assoc($query)) {
+     while ($tmp=mysqli_fetch_assoc($result)) {
          $retval[]=$tmp;
      }
      return $retval;
